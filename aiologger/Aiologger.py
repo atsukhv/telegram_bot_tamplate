@@ -1,29 +1,17 @@
 import sys
 import traceback
-import logging
 
 from aiogram import BaseMiddleware
 from aiogram.types import Update, Message
 from config import BLUIXCODE_ADMIN_GROUP
-from aiologger.colorize import ColoredFormatter
-
-# Настройка логирования
-logger = logging.getLogger("aiogram_logger")
-logger.setLevel(logging.DEBUG)
-
-# Создание консольного обработчика
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)
 
 
-
-# Добавление обработчика к логгеру
-logger.addHandler(console_handler)
+from aiologger.al_settings import alogger, date_and_time_format
 
 
 class ErrorLoggingMiddleware(BaseMiddleware):
-    def __init__(self, log_errors=True, log_messages=True, log_callbacks=True, log_handlers=True, show_time=False,
-                 show_date=False):
+    def __init__(self, log_errors=True, log_messages=True, log_callbacks=True, log_handlers=True, show_time=True,
+                 show_date=True):
         super().__init__()
         self.log_errors = log_errors
         self.log_messages = log_messages
@@ -33,30 +21,32 @@ class ErrorLoggingMiddleware(BaseMiddleware):
         self.show_date = show_date
 
     async def __call__(self, handler, event: Update, data: dict, message: Message | None = None):
+        await date_and_time_format(self.show_time, self.show_date) # Форматирование даты и времени
 
-        # Создание форматтера
-        formatter = ColoredFormatter(show_time=self.show_time, show_date=self.show_date)
-        console_handler.setFormatter(formatter)
-
+        # Логирование сообщений
         if self.log_messages and isinstance(event, Message):
-            logger.info(f"Получено сообщение с ID: {event.message_id}")
+            alogger.info(f"Получено сообщение с ID: {event.message_id}")
 
+        # Логирование колбэков
         if self.log_callbacks and event.callback_query is not None:
-            logger.info(f"Получен колбэк: {event.callback_query.data}")
+            alogger.info(f"Получен колбэк: {event.callback_query.data}")
 
+        # Логирование хэндлеров
         try:
             result = await handler(event, data)
             if self.log_handlers:
-                logger.info(f"Хэндлер выполнен: {handler.__name__}")
+                alogger.info(f"Хэндлер выполнен: {handler.__name__}")
             return result
         except Exception as e:
             if self.log_errors:
-                self.log_error(e, event)
+                self.log_error(e)
             return None
 
-    def log_error(self, e, event):
+    # Метод для логирования ошибок
+    @staticmethod
+    def log_error(e):
         error_message = f'Ошибка: {str(e)}'
-        logger.error(error_message)
+        alogger.error(error_message)
 
         # Получаем информацию о строке, где произошла ошибка
         exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -65,8 +55,8 @@ class ErrorLoggingMiddleware(BaseMiddleware):
         if tb:
             filename, lineno, funcname, _ = tb[-1]
             error_location = f'Ошибка произошла в файле: {filename.split("\\")[-1]}, строка: {lineno}, в функции: {funcname}'
-            logger.error(error_location)
+            alogger.error(error_location)
 
         # Отправка сообщения об ошибке в админ-группу
         # if 'message' in data and data['message'] is not None:
-        #     await data['message'].bot.send_message(chat_id=BLUIXCODE_ADMIN_GROUP, text
+        #     await data['message'].bot.send_message(chat_id=BLUIXCODE_ADMIN_GROUP, text=error_message)
