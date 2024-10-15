@@ -1,0 +1,8 @@
+# BOT_TOKEN = ''  # Оригинал
+# ADMIN_GRUPE_ID = int()  # Оригинал
+BOT_URL = ''
+
+BOT_TOKEN = '7078990174:AAH3fpXlEfZ0kTVibUJ02SBDWV_h2BHzdFgg'  # Для теста
+ADMIN_GRUPE_ID = -1002240577274  # Для теста
+
+BLUIXCODE_ADMIN_GROUP = -1002233983805

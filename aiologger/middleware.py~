@@ -1,0 +1,46 @@
+import sys
+import traceback
+
+from aiogram import BaseMiddleware
+from aiogram.types import Update, Message
+from loguru import logger
+
+from config import BLUIXCODE_ADMIN_GROUP
+
+
+class ErrorLoggingMiddleware(BaseMiddleware):
+    async def __call__(self, handler, event: Update, data: dict, message: Message | None = None):
+        try:
+            return await handler(event, data)
+        except Exception as e:
+            # Получаем информацию о текущем исключении
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+
+            # Формируем стек вызовов
+            tb = traceback.extract_tb(exc_traceback)
+
+            # Фильтруем стек вызовов, исключая файлы из .venv и logg_mdw
+            filtered_tb = [
+                (filename, lineno, funcname, text)
+                for filename, lineno, funcname, text in tb
+                if not (".venv" in filename or "logg_mdw" in filename)
+            ]
+
+            if filtered_tb:
+                # Берем последний элемент из отфильтрованного стека
+                filename, lineno, funcname, _ = filtered_tb[-1]
+                error1 = f'Ошибка: {str(e)}'
+                error2 = f'Ошибка произошла в файле: {filename}, строка: {lineno}, в функции: {funcname}'
+                logger.error(error1)
+                logger.error(error2)
+            else:
+                error1 = f'Ошибка: {str(e)}'
+                error2 = f'Ошибка произошла в коде, который не относится к вашему проекту.'
+                logger.error(error1)
+                logger.error(error2)
+
+            if 'message' in data and data['message'] is not None:
+                await data['message'].bot.send_message(chat_id=BLUIXCODE_ADMIN_GROUP, text=f'{error1}\n\n{error2}')
+            else:
+                # Если объекта Message нет, используем объект Update для отправки сообщения
+                await event.bot.send_message(chat_id=BLUIXCODE_ADMIN_GROUP, text=f'{error1}\n\n{error2}')
